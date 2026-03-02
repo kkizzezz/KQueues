@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KIZZEZ'S QUEUE LIST</title>
+  
+  <!-- Fix for Vite HMR fetch override error in iframe -->
+  <script>
+    try {
+      const originalFetch = window.fetch;
+      Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        enumerable: true,
+        get: () => originalFetch,
+        set: () => { /* ignore */ }
+      });
+    } catch (e) {
+      console.warn('Could not redefine window.fetch', e);
+    }
+  </script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Overpass:wght@400;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS (CDN for GitHub Pages compatibility) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bakery: {
+              bg: '#FDF5E6',
+              text: '#5D4037',
+              accent: '#D2691E',
+              'accent-hover': '#A0522D',
+              card: '#FFFFFF',
+              border: '#DEB887',
+              subtle: '#FFF8DC',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans Thai"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            display: ['"Overpass"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    .progress-bar-fill {
+      transition: width 1s ease-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 bg-bakery-bg text-bakery-text font-sans">
+  <div class="max-w-5xl mx-auto space-y-8 relative">
+    
+    <!-- Language Toggle -->
+    <div class="absolute top-0 right-0 flex gap-2 z-10">
+      <button onclick="setLanguage('th')" id="btn-lang-th" class="px-3 py-1 text-sm font-bold rounded-lg bg-bakery-accent text-white transition-colors">TH</button>
+      <button onclick="setLanguage('en')" id="btn-lang-en" class="px-3 py-1 text-sm font-bold rounded-lg bg-bakery-subtle text-bakery-text hover:bg-bakery-border transition-colors">EN</button>
+    </div>
+
+    <!-- Header -->
+    <header class="text-center space-y-4 pt-8">
+      <div class="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-bakery-subtle text-bakery-accent text-sm font-medium border border-bakery-border shadow-sm">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span data-i18n="openSlots">OPEN</span>
+      </div>
+      
+      <h1 class="text-4xl md:text-5xl font-display font-bold text-bakery-accent tracking-tight" data-i18n="title">KIZZEZ'S QUEUE LIST</h1>
+      
+      <div class="flex flex-col items-center justify-center gap-2 text-bakery-text/80">
+        <a href="https://twitter.com/ZamonephKizs" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 hover:text-bakery-accent transition-colors">
+          <i data-lucide="twitter" class="w-5 h-5"></i>
+          <span class="font-medium">@ZamonephKizs</span>
+        </a>
+        <div class="text-xs font-medium bg-white/50 px-3 py-1 rounded-full border border-bakery-border/50 flex items-center gap-1.5">
+          <i data-lucide="refresh-cw" class="w-3 h-3 text-bakery-accent"></i>
+          <span id="lastUpdatedText">อัปเดตล่าสุด: กำลังโหลด...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Section -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-bakery-card rounded-2xl p-6 shadow-sm border border-bakery-border flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+          <i data-lucide="activity" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-bakery-text/70" data-i18n="active">กำลังทำอยู่ (Active)</p>
+          <p class="text-2xl font-bold text-bakery-text" id="stat-active">0</p>
+        </div>
+      </div>
+      
+      <div class="bg-bakery-card rounded-2xl p-6 shadow-sm border border-bakery-border flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-stone-50 flex items-center justify-center text-stone-500 shrink-0">
+          <i data-lucide="clock" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-bakery-text/70" data-i18n="waiting">รอคิว (Waiting)</p>
+          <p class="text-2xl font-bold text-bakery-text" id="stat-waiting">0</p>
+        </div>
+      </div>
+
+      <div class="bg-bakery-card rounded-2xl p-6 shadow-sm border border-bakery-border flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+          <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-bakery-text/70" data-i18n="finished">เสร็จแล้ว (Finished)</p>
+          <p class="text-2xl font-bold text-bakery-text" id="stat-finished">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs Section -->
+    <div class="flex gap-2 border-b border-bakery-border pb-px mt-8">
+      <button onclick="switchTab('active')" id="tab-active" class="px-6 py-3 font-semibold text-bakery-accent border-b-2 border-bakery-accent transition-colors" data-i18n="tabActive">คิวปัจจุบัน</button>
+      <button onclick="switchTab('archive')" id="tab-archive" class="px-6 py-3 font-semibold text-bakery-text/50 hover:text-bakery-text border-b-2 border-transparent transition-colors" data-i18n="tabArchive">ประวัติ (เสร็จสมบูรณ์)</button>
+    </div>
+
+    <!-- Search and Sort Section -->
+    <div class="flex flex-col md:flex-row gap-4 mb-8 pt-4">
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <i data-lucide="search" class="h-5 w-5 text-bakery-text/50"></i>
+        </div>
+        <input
+          type="text"
+          id="searchInput"
+          data-i18n="searchPlaceholder"
+          placeholder="ค้นหาชื่อลูกค้า..."
+          class="block w-full pl-11 pr-4 py-3 bg-bakery-card border border-bakery-border rounded-xl text-bakery-text placeholder-bakery-text/50 focus:outline-none focus:ring-2 focus:ring-bakery-accent focus:border-bakery-accent transition-all shadow-sm"
+        />
+      </div>
+      
+      <div class="relative w-full md:w-48 shrink-0">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <i data-lucide="arrow-up-down" class="h-5 w-5 text-bakery-text/50"></i>
+        </div>
+        <select
+          id="sortSelect"
+          class="block w-full pl-11 pr-8 py-3 bg-bakery-card border border-bakery-border rounded-xl text-bakery-text focus:outline-none focus:ring-2 focus:ring-bakery-accent focus:border-bakery-accent transition-all shadow-sm appearance-none cursor-pointer"
+        >
+          <option value="date_desc">วันที่สั่ง (ใหม่-เก่า)</option>
+          <option value="date_asc">วันที่สั่ง (เก่า-ใหม่)</option>
+          <option value="deadline_asc">เดดไลน์ (ใกล้-ไกล)</option>
+          <option value="deadline_desc">เดดไลน์ (ไกล-ใกล้)</option>
+          <option value="name_asc">ชื่อ (A-Z)</option>
+          <option value="name_desc">ชื่อ (Z-A)</option>
+          <option value="status">สถานะ (ความคืบหน้า)</option>
+        </select>
+        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+          <i data-lucide="chevron-down" class="h-4 w-4 text-bakery-text/50"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Queue List -->
+    <div id="queueList" class="space-y-4 pb-12">
+      <!-- Items will be rendered here -->
+    </div>
+
+  </div>
+
+  <script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSFY9zHlnCIr1b_4Oh2-S44xgj3y8B7GiYBomj_u7BZ501NNKmmB2TnXnnvR0drYND/exec";
+
+    const STATUS_CONFIG = {
+      "รอชำระมัดจำ": { color: "bg-gray-100 text-gray-700 border-gray-200", progressColor: "bg-gray-400", progress: 0 },
+      "บรีฟงาน": { color: "bg-rose-100 text-rose-700 border-rose-200", progressColor: "bg-rose-400", progress: 15 },
+      "ร่างภาพ": { color: "bg-orange-100 text-orange-700 border-orange-200", progressColor: "bg-orange-400", progress: 30 },
+      "ตัดเส้น": { color: "bg-amber-100 text-amber-700 border-amber-200", progressColor: "bg-amber-400", progress: 50 },
+      "ลงสีพื้น": { color: "bg-emerald-100 text-emerald-700 border-emerald-200", progressColor: "bg-emerald-400", progress: 70 },
+      "ลงสี/ขยับ": { color: "bg-blue-100 text-blue-700 border-blue-200", progressColor: "bg-blue-400", progress: 90 },
+      "เสร็จสมบูรณ์": { color: "bg-green-100 text-green-700 border-green-200", progressColor: "bg-green-500", progress: 100 }
+    };
+
+    const translations = {
+      th: {
+        title: "KIZZEZ'S QUEUE LIST",
+        openSlots: "OPEN",
+        active: "กำลังทำอยู่ (Active)",
+        waiting: "รอคิว (Waiting)",
+        finished: "เสร็จแล้ว (Finished)",
+        searchPlaceholder: "ค้นหาชื่อลูกค้า...",
+        sortDateDesc: "วันที่สั่ง (ใหม่-เก่า)",
+        sortDateAsc: "วันที่สั่ง (เก่า-ใหม่)",
+        sortDeadlineAsc: "เดดไลน์ (ใกล้-ไกล)",
+        sortDeadlineDesc: "เดดไลน์ (ไกล-ใกล้)",
+        sortNameAsc: "ชื่อ (A-Z)",
+        sortNameDesc: "ชื่อ (Z-A)",
+        sortStatus: "สถานะ (ความคืบหน้า)",
+        tabActive: "คิวปัจจุบัน",
+        tabArchive: "ประวัติ (เสร็จสมบูรณ์)",
+        noItems: "ไม่พบชื่อลูกค้าที่ค้นหา",
+        loading: "กำลังโหลดข้อมูลคิว...",
+        error: "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+        orderedAt: "สั่งเมื่อ:",
+        deadline: "เดดไลน์:",
+        noDeadline: "ไม่ระบุ",
+        noItemsList: "ไม่มีรายการ",
+        unnamed: "ไม่ระบุชื่อ",
+        lastUpdated: "อัปเดตล่าสุด:",
+        status: {
+          "รอชำระมัดจำ": "รอชำระมัดจำ",
+          "บรีฟงาน": "บรีฟงาน",
+          "ร่างภาพ": "ร่างภาพ",
+          "ตัดเส้น": "ตัดเส้น",
+          "ลงสีพื้น": "ลงสีพื้น",
+          "ลงสี/ขยับ": "ลงสี/ขยับ",
+          "เสร็จสมบูรณ์": "เสร็จสมบูรณ์"
+        }
+      },
+      en: {
+        title: "KIZZEZ'S QUEUE LIST",
+        openSlots: "OPEN",
+        active: "Active",
+        waiting: "Waiting",
+        finished: "Finished",
+        searchPlaceholder: "Search customer name...",
+        sortDateDesc: "Order Date (New-Old)",
+        sortDateAsc: "Order Date (Old-New)",
+        sortDeadlineAsc: "Deadline (Near-Far)",
+        sortDeadlineDesc: "Deadline (Far-Near)",
+        sortNameAsc: "Name (A-Z)",
+        sortNameDesc: "Name (Z-A)",
+        sortStatus: "Status (Progress)",
+        tabActive: "Active Queue",
+        tabArchive: "Archive",
+        noItems: "No customers found",
+        loading: "Loading queue data...",
+        error: "Error loading data",
+        orderedAt: "Ordered:",
+        deadline: "Deadline:",
+        noDeadline: "Not specified",
+        noItemsList: "No items",
+        unnamed: "Unnamed",
+        lastUpdated: "Last updated:",
+        status: {
+          "รอชำระมัดจำ": "Waiting for Deposit",
+          "บรีฟงาน": "Briefing",
+          "ร่างภาพ": "Sketching",
+          "ตัดเส้น": "Lineart",
+          "ลงสีพื้น": "Base Color",
+          "ลงสี/ขยับ": "Coloring/Animating",
+          "เสร็จสมบูรณ์": "Finished"
+        }
+      }
+    };
+
+    let allQueueData = [];
+    let currentSearchQuery = '';
+    let currentSort = 'date_desc';
+    let currentLang = 'th';
+    let currentTab = 'active';
+    let lastUpdatedDate = null;
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      
+      // Update buttons
+      document.getElementById('btn-lang-th').className = lang === 'th' 
+        ? "px-3 py-1 text-sm font-bold rounded-lg bg-bakery-accent text-white transition-colors" 
+        : "px-3 py-1 text-sm font-bold rounded-lg bg-bakery-subtle text-bakery-text hover:bg-bakery-border transition-colors";
+      document.getElementById('btn-lang-en').className = lang === 'en' 
+        ? "px-3 py-1 text-sm font-bold rounded-lg bg-bakery-accent text-white transition-colors" 
+        : "px-3 py-1 text-sm font-bold rounded-lg bg-bakery-subtle text-bakery-text hover:bg-bakery-border transition-colors";
+
+      const t = translations[lang];
+
+      // Update static text
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+          if (el.tagName === 'INPUT' && el.type === 'text') {
+            el.placeholder = t[key];
+          } else {
+            el.innerText = t[key];
+          }
+        }
+      });
+
+      // Update sort options
+      const sortSelect = document.getElementById('sortSelect');
+      sortSelect.options[0].text = t.sortDateDesc;
+      sortSelect.options[1].text = t.sortDateAsc;
+      sortSelect.options[2].text = t.sortDeadlineAsc;
+      sortSelect.options[3].text = t.sortDeadlineDesc;
+      sortSelect.options[4].text = t.sortNameAsc;
+      sortSelect.options[5].text = t.sortNameDesc;
+      sortSelect.options[6].text = t.sortStatus;
+
+      // Update last updated text
+      if (lastUpdatedDate) {
+        updateLastUpdatedText();
+      }
+
+      // Re-render dynamic content
+      renderStats();
+      renderQueue();
+    }
+
+    function updateLastUpdatedText() {
+      if (!lastUpdatedDate) return;
+      const t = translations[currentLang];
+      const locale = currentLang === 'th' ? 'th-TH' : 'en-GB';
+      const timeStr = lastUpdatedDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+      const dateStr = lastUpdatedDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+      document.getElementById('lastUpdatedText').innerText = `${t.lastUpdated} ${dateStr} ${timeStr}`;
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const tabActive = document.getElementById('tab-active');
+      const tabArchive = document.getElementById('tab-archive');
+
+      if (tab === 'active') {
+        tabActive.className = "px-6 py-3 font-semibold text-bakery-accent border-b-2 border-bakery-accent transition-colors";
+        tabArchive.className = "px-6 py-3 font-semibold text-bakery-text/50 hover:text-bakery-text border-b-2 border-transparent transition-colors";
+      } else {
+        tabArchive.className = "px-6 py-3 font-semibold text-bakery-accent border-b-2 border-bakery-accent transition-colors";
+        tabActive.className = "px-6 py-3 font-semibold text-bakery-text/50 hover:text-bakery-text border-b-2 border-transparent transition-colors";
+      }
+      renderQueue();
+    }
+
+    async function fetchQueueData() {
+      const container = document.getElementById('queueList');
+      const t = translations[currentLang];
+      container.innerHTML = `
+        <div class="text-center py-16 bg-bakery-card rounded-2xl border border-bakery-border border-dashed flex flex-col items-center justify-center gap-3">
+          <i data-lucide="loader-2" class="w-8 h-8 text-bakery-accent animate-spin"></i>
+          <p class="text-bakery-text/70 font-medium">${t.loading}</p>
+        </div>
+      `;
+      lucide.createIcons();
+
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        const data = await response.json();
+        
+        allQueueData = [...(data.queue || []), ...(data.archive || [])];
+        lastUpdatedDate = new Date();
+        updateLastUpdatedText();
+        
+        renderStats();
+        renderQueue();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        container.innerHTML = `
+          <div class="text-center py-16 bg-red-50 rounded-2xl border border-red-200 border-dashed">
+            <p class="text-red-500 font-medium">${t.error}</p>
+          </div>
+        `;
+        document.getElementById('lastUpdatedText').innerText = t.error;
+      }
+    }
+
+    function renderStats() {
+      const active = allQueueData.filter(item => item.status !== 'เสร็จสมบูรณ์' && item.status !== 'รอชำระมัดจำ').length;
+      const waiting = allQueueData.filter(item => item.status === 'รอชำระมัดจำ').length;
+      const finished = allQueueData.filter(item => item.status === 'เสร็จสมบูรณ์').length;
+
+      document.getElementById('stat-active').innerText = active;
+      document.getElementById('stat-waiting').innerText = waiting;
+      document.getElementById('stat-finished').innerText = finished;
+    }
+
+    function sortData(data) {
+      return data.sort((a, b) => {
+        switch (currentSort) {
+          case 'date_desc':
+            return new Date(b.date) - new Date(a.date);
+          case 'date_asc':
+            return new Date(a.date) - new Date(b.date);
+          case 'deadline_asc':
+            if (!a.deadline) return 1;
+            if (!b.deadline) return -1;
+            return new Date(a.deadline) - new Date(b.deadline);
+          case 'deadline_desc':
+            if (!a.deadline) return 1;
+            if (!b.deadline) return -1;
+            return new Date(b.deadline) - new Date(a.deadline);
+          case 'name_asc':
+            return (a.clientName || '').localeCompare(b.clientName || '');
+          case 'name_desc':
+            return (b.clientName || '').localeCompare(a.clientName || '');
+          case 'status':
+            const progA = STATUS_CONFIG[a.status]?.progress || 0;
+            const progB = STATUS_CONFIG[b.status]?.progress || 0;
+            return progB - progA;
+          default:
+            return 0;
+        }
+      });
+    }
+
+    function renderQueue() {
+      const container = document.getElementById('queueList');
+      const t = translations[currentLang];
+      container.innerHTML = '';
+
+      let filtered = allQueueData.filter(item => {
+        const matchesSearch = (item.clientName || '').toLowerCase().includes(currentSearchQuery.toLowerCase());
+        const isFinished = item.status === 'เสร็จสมบูรณ์';
+        const matchesTab = currentTab === 'active' ? !isFinished : isFinished;
+        return matchesSearch && matchesTab;
+      });
+
+      filtered = sortData(filtered);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-bakery-card rounded-2xl border border-bakery-border border-dashed">
+            <p class="text-bakery-text/70 font-medium">${t.noItems}</p>
+          </div>
+        `;
+        return;
+      }
+
+      const locale = currentLang === 'th' ? 'th-TH' : 'en-GB';
+
+      filtered.forEach(item => {
+        const orderDateStr = item.date ? new Date(item.date).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+        const deadlineStr = item.deadline ? new Date(item.deadline).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : t.noDeadline;
+        
+        const config = STATUS_CONFIG[item.status] || STATUS_CONFIG["รอชำระมัดจำ"];
+        const itemNames = item.items && item.items.length > 0 ? item.items.map(i => i.name).join(', ') : t.noItemsList;
+        const statusText = t.status[item.status] || item.status;
+        
+        const card = document.createElement('div');
+        card.className = "bg-bakery-card rounded-2xl p-5 md:p-6 shadow-sm border border-bakery-border flex flex-col md:flex-row md:items-center gap-4 md:gap-6 hover:shadow-md transition-shadow";
+        
+        card.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between md:justify-start gap-3 mb-2">
+              <h3 class="text-lg font-bold text-bakery-text truncate">
+                ${item.clientName || t.unnamed}
+              </h3>
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${config.color}">
+                ${statusText}
+              </span>
+            </div>
+            <p class="text-sm text-bakery-text/70 mb-1">
+              ${itemNames}
+            </p>
+            <div class="flex flex-wrap gap-3 text-xs text-bakery-text/50">
+              <span class="flex items-center gap-1"><i data-lucide="calendar-plus" class="w-3 h-3"></i> ${t.orderedAt} ${orderDateStr}</span>
+              <span class="flex items-center gap-1 text-bakery-accent"><i data-lucide="calendar-clock" class="w-3 h-3"></i> ${t.deadline} ${deadlineStr}</span>
+            </div>
+          </div>
+
+          <div class="w-full md:w-64 shrink-0 mt-2 md:mt-0">
+            <div class="flex justify-between text-xs font-medium text-bakery-text/70 mb-1.5">
+              <span>Progress</span>
+              <span>${config.progress}%</span>
+            </div>
+            <div class="w-full h-2.5 bg-bakery-subtle rounded-full overflow-hidden border border-bakery-border/50">
+              <div class="h-full rounded-full progress-bar-fill ${config.progressColor}" style="width: 0%"></div>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(card);
+
+        // Animate progress bar after a short delay
+        setTimeout(() => {
+          const progressBar = card.querySelector('.progress-bar-fill');
+          if (progressBar) {
+            progressBar.style.width = `${config.progress}%`;
+          }
+        }, 50);
+      });
+      
+      // Re-initialize lucide icons for new elements
+      lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      setLanguage('th'); // Initialize language
+      fetchQueueData();
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value;
+        renderQueue();
+      });
+
+      document.getElementById('sortSelect').addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        renderQueue();
+      });
+    });
+  </script>
+</body>
+</html>
