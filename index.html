@@ -427,9 +427,9 @@
             if (!deadlineB) return -1;
             return deadlineB - deadlineA;
           case 'name_asc':
-            return (a.clientName || '').localeCompare(b.clientName || '');
+            return (a.clientName ? String(a.clientName) : '').localeCompare(b.clientName ? String(b.clientName) : '');
           case 'name_desc':
-            return (b.clientName || '').localeCompare(a.clientName || '');
+            return (b.clientName ? String(b.clientName) : '').localeCompare(a.clientName ? String(a.clientName) : '');
           case 'status':
             const progA = STATUS_CONFIG[a.status]?.progress || 0;
             const progB = STATUS_CONFIG[b.status]?.progress || 0;
@@ -446,7 +446,8 @@
       container.innerHTML = '';
 
       let filtered = allQueueData.filter(item => {
-        const matchesSearch = (item.clientName || '').toLowerCase().includes(currentSearchQuery.toLowerCase());
+        const clientName = item.clientName ? String(item.clientName) : '';
+        const matchesSearch = clientName.toLowerCase().includes(currentSearchQuery.toLowerCase());
         const isFinished = item.status === 'เสร็จสมบูรณ์';
         const matchesTab = currentTab === 'active' ? !isFinished : isFinished;
         return matchesSearch && matchesTab;
